@@ -1,0 +1,212 @@
+binary_sensor:
+  - platform: gpio
+    name: "Włącznik światła"
+    id: garage_light_switch
+    pin:
+      number: 21
+      mode: INPUT_PULLDOWN
+    on_click:
+    - min_length: 50ms
+      max_length: 500ms
+      then:
+        - if:
+            condition:
+              lambda: 'return id(relay_garage_light).state;'
+            then:
+              - switch.turn_off: relay_garage_light
+            else:
+              - switch.turn_on: relay_garage_light
+              - delay: 300s
+              - switch.turn_off: relay_garage_light
+    - min_length: 501ms
+      max_length: 2000ms
+      then:
+        - if:
+            condition:
+              lambda: 'return id(relay_garage_light).state;'
+            then:
+              - switch.turn_off: relay_garage_light
+            else:
+              - switch.turn_on: relay_garage_light
+              - delay: 300ms
+              - switch.turn_off: relay_garage_light
+              - delay: 300ms
+              - switch.turn_on: relay_garage_light
+              
+  - platform: gpio
+    name: "Garaż lewy zamknięty"
+    id: garage_left_close
+    pin:
+      number: 17 #żółty
+      mode: INPUT_PULLDOWN
+    on_state:
+      lambda: |-
+        if (id(garage_left_close).state)
+        {
+        id(garage_left_state).publish_state("Zamknięty");
+        }
+        else
+        {
+        id(garage_left_state).publish_state("Otwieranie");
+        }
+        
+  - platform: gpio
+    name: "Garaż lewy otwarty"
+    id: garage_left_open
+    pin:
+      number: 16 #brązowy
+      mode: INPUT_PULLDOWN
+    on_state:
+      lambda: |-
+        if (id(garage_left_open).state)
+        {
+        id(garage_left_state).publish_state("Otwarty");
+        }
+        else
+        {
+        id(garage_left_state).publish_state("Zamykanie");
+        }
+
+  - platform: gpio
+    name: "Garaż prawy zamknięty"
+    id: garage_right_close
+    pin:
+      number: 19 #żółty
+      mode: INPUT_PULLDOWN
+    on_state:
+      lambda: |-
+        if (id(garage_right_close).state)
+        {
+        id(garage_right_state).publish_state("Zamknięty");
+        }
+        else
+        {
+        id(garage_right_state).publish_state("Otwieranie");
+        }
+        
+  - platform: gpio
+    name: "Garaż prawy otwarty"
+    id: garage_right_open
+    pin:
+      number: 18 #brązowy
+      mode: INPUT_PULLDOWN
+    on_state:
+      lambda: |-
+        if (id(garage_right_open).state)
+        {
+        id(garage_right_state).publish_state("Otwarty");
+        }
+        else
+        {
+        id(garage_right_state).publish_state("Zamykanie");
+        }
+
+  - platform: template
+    name: "Garaż lewy samochód"
+    id: garage_left_car
+    device_class: occupancy
+    lambda: |-
+      if (id(garage_left_ultrasonic).state < 1.2) {return true;} else {return false;}
+    icon: "mdi:car-arrow-left"
+  - platform: template
+    name: "Garaż prawy samochód"
+    id: garage_right_car
+    device_class: occupancy
+    lambda: |-
+      if (id(garage_right_ultrasonic).state < 1.2) {return true;} else {return false;}
+    icon: "mdi:car-arrow-right"
+
+text_sensor:
+  - platform: template
+    name: "Garaż lewy"
+    id: garage_left_state
+    icon: "mdi:garage-variant"
+  - platform: template
+    name: "Garaż prawy"
+    id: garage_right_state
+    icon: "mdi:garage-variant"
+
+sensor:
+  - platform: ultrasonic
+    trigger_pin: 25 #szary
+    echo_pin: 26 #biały
+#    name: "Garaż lewy odległość"
+    id: garage_left_ultrasonic
+    internal: true
+    update_interval: 5s
+
+  - platform: ultrasonic
+    trigger_pin: 22 #szary
+    echo_pin: 23 #biały
+#    name: "Garaż prawy obecność"
+    id: garage_right_ultrasonic
+    internal: true
+    update_interval: 5s
+
+switch:
+  - platform: gpio
+    name: "Światło garaż"
+    id: relay_garage_light
+    pin: 27 #fioletowy
+  - platform: gpio
+    pin: 13 #niebieski
+    id: relay_garaz_lewy
+    internal: true
+    on_turn_on:
+    - delay: 500ms
+    - switch.turn_off: relay_garaz_lewy
+  - platform: gpio
+    pin: 14 #zielony
+    id: relay_garaz_prawy
+    internal: true
+    on_turn_on:
+    - delay: 500ms
+    - switch.turn_off: relay_garaz_prawy
+
+button:
+  - platform: template
+    name: Przycisk lewa brama
+    id: left_garage_button
+    icon: "mdi:garage"
+    on_press:
+      - switch.toggle: relay_garaz_lewy   
+  - platform: template
+    name: Przycisk prawa brama
+    id: right_garage_button
+    icon: "mdi:garage"
+    on_press:
+      - switch.toggle: relay_garaz_prawy   
+
+  - platform: template
+    name: Przycisk światło czasowe
+    id: light_short_button
+    icon: "mdi:light"
+    on_press:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(relay_garage_light).state;'
+            then:
+              - switch.turn_off: relay_garage_light
+            else:
+              - switch.turn_on: relay_garage_light
+              - delay: 300s
+              - switch.turn_off: relay_garage_light
+
+  - platform: template
+    name: Przycisk światło stałe
+    id: light_long_button
+    icon: "mdi:light"
+    on_press:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(relay_garage_light).state;'
+            then:
+              - switch.turn_off: relay_garage_light
+            else:
+              - switch.turn_on: relay_garage_light
+              - delay: 300ms
+              - switch.turn_off: relay_garage_light
+              - delay: 300ms
+              - switch.turn_on: relay_garage_light
